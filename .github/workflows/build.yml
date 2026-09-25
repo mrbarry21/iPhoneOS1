@@ -1,0 +1,41 @@
+name: Build iPhoneOS1 IPA
+on:
+  workflow_dispatch: # Allows you to trigger the build manually
+
+jobs:
+  build:
+    runs-on: macos-14 # Uses Apple Silicon Cloud runners
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Adjust Target for iPhone 13 mini
+        run: |
+          # Switches the deployment targets to allow modern iOS to read it
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' iPhoneOS.xcodeproj/project.pbxproj
+
+      - name: Compile and Archive
+        run: |
+          xcodebuild archive \
+            -project iPhoneOS.xcodeproj \
+            -scheme iPhoneOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $補/iPhoneOS.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Package into Unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -r $補/iPhoneOS.xcarchive/Products/Applications/iPhoneOS.app Payload/
+          zip -r iPhoneOS1.ipa Payload
+
+      - name: Upload IPA Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: iPhoneOS1-Simulator-IPA
+          path: iPhoneOS1.ipa
